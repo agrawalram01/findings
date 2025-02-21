@@ -1,0 +1,5 @@
+# common.yaml
+aws_region: "us-west-2"
+project_name: "my-project"
+company: "my-company"
+owner: "devops-team"
