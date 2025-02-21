@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat
+  template:
+    metadata:
+      labels:
+        app: tomcat
+    spec:
+      containers:
+      - name: tomcat-service
+        image: agrawalram/k8s-tomcat-app:t1
+        ports:
+        - containerPort: 8080
+#started resource alocator limit
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+#ended resource alocator limit
+        env:
+        - name: POSTGRES_HOST
+          value: postgres-service
+        envFrom:
+        - secretRef:
+            name: postgres-secret
