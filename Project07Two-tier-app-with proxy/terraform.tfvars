@@ -1,0 +1,5 @@
+region = "us-east-2"
+instance_type = "t2.micro"
+ami = "ami-036841078a4b68e14"
+key_name = "DockerDemo"
+instance_name = "DockerServerInstance"
