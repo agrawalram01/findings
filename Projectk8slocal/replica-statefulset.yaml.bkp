@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica
+spec:
+  serviceName: postgres-replica
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: replica
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: replica
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:latest
+        envFrom:
+        - secretRef:
+            name: postgres-secret
+        command:
+            - bash
+            - "-c"
+            - |
+              if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+                echo "Initializing replica from primary..."
+                pg_basebackup -h postgres-primary -U replicator -p 5432 -D /var/lib/postgresql/data/ -Fp -Xs -P -R
+              fi
+              exec docker-entrypoint.sh postgres
+        env:
+        - name: REPLICA_ROLE
+          value: "true"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-replica-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: replica.conf
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: postgres-config
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-replica-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 10Gi

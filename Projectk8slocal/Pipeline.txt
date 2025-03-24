@@ -1,0 +1,79 @@
+pipeline {
+    agent any  // Run on any available agent
+
+    environment {
+        TOMCAT_NAMESPACE = 'springboot-demo'
+        TOMCAT_POD_LABEL = 'app=tomcat'
+    }
+
+    stages {
+        // Stage 1: Checkout code from version control
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from version control...'
+                git branch: 'main', url: 'https://github.com/agrawalram01/springboot.git'
+            }
+        }
+
+        // Stage 2: Build the project
+        stage('Build') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    sh 'mvn clean package'
+                }
+            }
+        }
+        
+        // Stage 3: Deploy to Tomcat
+        stage('Deploy to Tomcat') {
+            steps {
+                echo 'Deploying the application to Tomcat...'
+                script {
+                    // Copy the WAR file to the Tomcat pod
+                    def tomcatPod = kubectlGetPod("${TOMCAT_POD_LABEL}", "${TOMCAT_NAMESPACE}")
+                    if (tomcatPod) {
+                        sh "kubectl cp target/demo-1.0.0.war ${tomcatPod}:/usr/local/tomcat/webapps/ROOT.war -n ${TOMCAT_NAMESPACE}"
+                        echo "Deployed ROOT.war to Tomcat pod ${tomcatPod}."
+                    } else {
+                        error "Tomcat pod not found with label ${TOMCAT_POD_LABEL} in namespace ${TOMCAT_NAMESPACE}."
+                    }
+                }
+            }
+        }
+        
+        // Stage 4: Restart Tomcat
+        stage('Restart Tomcat') {
+            steps {
+                echo 'Restarting Tomcat pod...'
+                script {
+                    def tomcatPod = kubectlGetPod("${TOMCAT_POD_LABEL}", "${TOMCAT_NAMESPACE}")
+                    if (tomcatPod) {
+                        sh "kubectl delete pod ${tomcatPod} -n ${TOMCAT_NAMESPACE}"
+                        echo "Tomcat pod ${tomcatPod} deleted. A new pod will be created automatically."
+                    } else {
+                        error "Tomcat pod not found with label ${TOMCAT_POD_LABEL} in namespace ${TOMCAT_NAMESPACE}."
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+
+def kubectlGetPod(String label, String namespace) {
+    try {
+        def podOutput = sh(script: "kubectl get pods -l ${label} -n ${namespace} -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
+        return podOutput ? podOutput : null
+    } catch (Exception e) {
+        echo "Error fetching pod name: ${e.message}"
+        return null
+    }
+}
