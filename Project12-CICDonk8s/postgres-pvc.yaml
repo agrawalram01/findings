@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-primary-data-postgres-primary-springboot-0
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: springboot-demo
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-replica-data-postgres-replica-springboot-0
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: springboot-demo
+
